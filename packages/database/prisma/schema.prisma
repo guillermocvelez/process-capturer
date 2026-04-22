@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum CaptureEventType {
+  CLICK
+  INPUT
+  CHANGE
+  URL_CHANGE
+}
+
+model Guide {
+  id          String      @id @default(cuid())
+  title       String
+  description String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  steps       GuideStep[]
+  sessions    CaptureSession[]
+
+  @@map("guides")
+}
+
+model GuideStep {
+  id           String   @id @default(cuid())
+  guideId       String
+  orderIndex    Int
+  title         String
+  instruction   String
+  screenshotUrl String?
+  rawEventId    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  guide Guide @relation(fields: [guideId], references: [id], onDelete: Cascade)
+
+  @@unique([guideId, orderIndex])
+  @@index([guideId])
+  @@map("guide_steps")
+}
+
+model CaptureSession {
+  id         String   @id @default(cuid())
+  guideId     String?
+  initialUrl  String
+  startedAt   DateTime @default(now())
+  finishedAt  DateTime?
+  createdAt   DateTime @default(now())
+
+  guide  Guide?         @relation(fields: [guideId], references: [id], onDelete: SetNull)
+  events CaptureEvent[]
+
+  @@index([guideId])
+  @@map("capture_sessions")
+}
+
+model CaptureEvent {
+  id            String           @id @default(cuid())
+  sessionId      String
+  eventType      CaptureEventType
+  timestamp      DateTime
+  url            String
+  selector       String?
+  tagName        String?
+  label          String?
+  valueMasked    String?
+  metaJson       Json?
+  screenshotUrl  String?
+  isImportant    Boolean          @default(false)
+  createdAt      DateTime         @default(now())
+
+  session CaptureSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, timestamp])
+  @@map("capture_events")
+}
